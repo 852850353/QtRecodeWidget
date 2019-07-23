@@ -5,6 +5,8 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QDebug>
+#include <QApplication>
+
 class FilterObject :public QObject
 {
 public:
@@ -106,6 +108,7 @@ void FileSelectBox::setPushButtonText(QString DisplayTest)
 
 void FileSelectBox::resizeEvent(QResizeEvent *event)
 {
+    qDebug()<<__PRETTY_FUNCTION__;
     int buttonFixWidth = 20;
 
     this->setMinimumSize(100,buttonFixWidth);
@@ -125,7 +128,7 @@ void FileSelectBox::resizeEvent(QResizeEvent *event)
         m_pTableView->resize(this->size().width(),m_pTableView->model()->rowCount()*m_iItemHeight);
     }
     else{m_pTableView->close();}
-    m_pTableView->move(m_MovePos.x(),m_MovePos.y()+this->height());
+    m_pTableView->move(m_MovePos);
 }
 
 void FileSelectBox::keyPressEvent(QKeyEvent *event)
@@ -154,24 +157,40 @@ void FileSelectBox::keyPressEvent(QKeyEvent *event)
 
 void FileSelectBox::moveEvent(QMoveEvent *event)
 {
-    m_MovePos = event->pos();
-    m_pTableView->move(event->pos().x(),event->pos().y()+this->size().height());
+    m_MovePos = this->mapToGlobal(this->rect().bottomLeft());
+    m_pTableView->move(m_MovePos);
 }
 
 void FileSelectBox::paintEvent(QPaintEvent *event)
 {
-    if(!m_pTableView->model())
+    m_MovePos = this->mapToGlobal(this->rect().bottomLeft());
+    //    m_MovePos = this->mapToGlobal(this->rect().bottomLeft());
+    if(m_pLineEdit == QApplication::focusWidget()
+            && m_pTableView
+            && m_pTableView->model()
+            && m_pTableView->model()->rowCount())
     {
-        m_pTableView->hide();
-    }
-    else
+        if(m_AfterPos != m_MovePos)
+        {
+            if(!m_AfterPos.isNull())
+            {
+                this->setFocus();
+            }
+            qDebug()<<"m_MovePos"<<m_MovePos;
+            m_pTableView->move(m_MovePos);
+            m_AfterPos = m_MovePos;
+        }
+    }else
     {
-        m_pTableView->show();
+        m_pTableView->close();
     }
 }
 
+
+
 void FileSelectBox::showEvent(QShowEvent *event)
 {
+    m_pTableView->move(m_MovePos);
     if(m_pTableView) m_pTableView->show();
 }
 
@@ -187,14 +206,19 @@ void FileSelectBox::closeEvent(QCloseEvent *event)
 
 void FileSelectBox::focusInEvent(QFocusEvent *event)
 {
-    qDebug()<<"focusInEvent";
-    if(m_pTableView) m_pTableView->show();
+    if(m_pTableView)
+    {
+        m_pTableView->move(m_MovePos);
+        m_pTableView->show();
+    }
+    QWidget::focusInEvent(event);
 }
 
 void FileSelectBox::focusOutEvent(QFocusEvent *event)
 {
-    qDebug()<<"focusOutEvent";
+    qDebug()<<__PRETTY_FUNCTION__;
     if(m_pTableView) m_pTableView->hide();
+    QWidget::focusOutEvent(event);
 }
 
 void FileSelectBox::showSelectFileDialog()
@@ -302,6 +326,8 @@ void FileSelectBox::showPopList(QStringList strList)
         {
             m_pTableView->resize(this->size().width(),m_pTableView->model()->rowCount()*m_iItemHeight);
         }
+
+        m_pTableView->move(m_MovePos);
         m_pTableView->show();
     }
 }

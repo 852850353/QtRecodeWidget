@@ -74,7 +74,6 @@ signals:
 
 private:
     QTimer* timer = nullptr;
-
     void keyPressEvent(QKeyEvent* event)
     {
         switch (event->key()) {
@@ -143,12 +142,12 @@ private:
     QFileDialog* m_pFileDialog = nullptr;
     int m_iItemWidth,m_iItemHeight = 30;
     QPoint m_MovePos;
+    QPoint m_AfterPos;
 
     virtual void resizeEvent(QResizeEvent* event);
     virtual void keyPressEvent(QKeyEvent *event);
     virtual void moveEvent(QMoveEvent* event);
     virtual void paintEvent(QPaintEvent* event);
-
     virtual void showEvent(QShowEvent *event);
     virtual void hideEvent(QHideEvent *event);
     virtual void closeEvent(QCloseEvent *event);

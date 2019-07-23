@@ -13,10 +13,14 @@ public:
 
 signals:
     void enterKey();
-
+//    void focesOut();
+//    void focesIn();
 protected:
     void keyPressEvent(QKeyEvent *event);
+//    void focusOutEvent(QFocusEvent *event);
+//    void focusInEvent(QFocusEvent *event);
+    bool event(QEvent *event);
+//    void (QMouseEvent *event);
 };
-
 
 #endif // FILESELECTLINE_H
