@@ -48,6 +48,9 @@
 #include <QPushButton>
 #include <QStandardItemModel>
 #include <QKeyEvent>
+#include <QDebug>
+#include <QMouseEvent>
+#include <QTimer>
 
 #include "fileselectline.h"
 class QFileDialog;
@@ -59,14 +62,19 @@ public:
     explicit selectPopList(QWidget* parent = nullptr)
     {
         if(parent) this->setParent(parent);
+        setStyleSheet("QTableView::item{selection-background-color:rgb(23,165,230)}");
     }
-    ~selectPopList(){}
+    ~selectPopList(){
+        if(timer){delete timer;timer=nullptr;}
+    }
 
 signals:
     void enterKeySendCurrString(QString);
     void enterKeySendCurrIndex(QModelIndex);
 
 private:
+    QTimer* timer = nullptr;
+
     void keyPressEvent(QKeyEvent* event)
     {
         switch (event->key()) {
@@ -76,8 +84,36 @@ private:
             break;
         }
     }
-};
+    void mousePressEvent(QMouseEvent* event)
+    {
+        if(model())
+        {
+            switch (event->button()) {
+            case Qt::LeftButton:
+                qDebug()<<__PRETTY_FUNCTION__<<" >> "<<indexAt(this->mapFromGlobal(QCursor::pos()));
+                selectRow(indexAt(this->mapFromGlobal(QCursor::pos())).row());
+                setCurrentIndex(indexAt(this->mapFromGlobal(QCursor::pos())));
+                if(!timer)
+                {
+                    timer = new QTimer();
 
+                }
+                connect(timer,&QTimer::timeout,[=]{
+                    qDebug()<<"base timer";
+                    emit enterKeySendCurrString(QString(this->currentIndex().data().toString()));
+                    emit enterKeySendCurrIndex(this->currentIndex());
+                    timer->stop();
+                    delete timer;
+                    timer = nullptr;
+                });
+                timer->start(180);
+                break;
+
+            }
+
+        }
+    }
+};
 
 class FileSelectBox : public QWidget
 {

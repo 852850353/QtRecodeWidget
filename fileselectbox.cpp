@@ -5,6 +5,17 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QDebug>
+class FilterObject :public QObject
+{
+public:
+    FilterObject(QObject* obj);
+    ~FilterObject();
+private:
+    bool eventFilter(QObject* obj,QEvent* event)
+    {
+
+    }
+};
 
 FileSelectBox::FileSelectBox(QWidget *parent)
 {
@@ -12,7 +23,6 @@ FileSelectBox::FileSelectBox(QWidget *parent)
     m_pLineEdit->setText("test");
     m_pPushButton = new QPushButton(this);
     m_pTableView = new selectPopList();
-    m_pItemModel = new QStandardItemModel();
     m_pFileDialog = new QFileDialog();
     if(parent) this->setParent(parent);
 
@@ -26,21 +36,29 @@ FileSelectBox::FileSelectBox(QWidget *parent)
         m_pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);//设置选中模式为选中行
         m_pTableView->setSelectionMode( QAbstractItemView::SingleSelection);//设置选中单个
-        m_pTableView->setStyleSheet("QTableView::item{selection-background-color:rgb(23,165,230)}");
-        connect(m_pLineEdit,&QLineEdit::textChanged,this,&FileSelectBox::selectFile);
+
         connect(m_pPushButton,&QPushButton::clicked,this,&FileSelectBox::showSelectFileDialog);
-        connect(m_pLineEdit,&FileSelectLine::focusOut,this,&FileSelectBox::hidePopList);
-        connect(m_pLineEdit,&FileSelectLine::focusIn,[=]{
-            this->selectFile(m_pLineEdit->text());
+
+        connect(m_pLineEdit,&QLineEdit::textChanged,this,&FileSelectBox::selectFile);
+
+        connect(m_pLineEdit,&FileSelectLine::enterKey,[=]
+        {
+            if(m_pTableView->model()&& m_pTableView->model() &&m_pTableView->currentIndex().row() > -1)
+            {
+                m_pLineEdit->setText(m_pTableView->currentIndex().data().toString());
+            }
         });
-        connect(m_pLineEdit,&FileSelectLine::editingFinished,this,&FileSelectBox::enterKeyAddText);
 
         connect(m_pFileDialog,&QFileDialog::fileSelected,[=](QString File){
-                m_pLineEdit->setText(File);
+            m_pLineEdit->setText(File);
         });
 
         connect(m_pFileDialog,&QFileDialog::urlSelected,[=](QUrl Path){
-                m_pLineEdit->setText(Path.toString());
+            m_pLineEdit->setText(Path.toString());
+        });
+        connect(m_pTableView,&selectPopList::enterKeySendCurrString,[=](QString filePath){
+            m_pLineEdit->setText(filePath);
+            m_pTableView->hide();
         });
     }
 }
@@ -102,12 +120,6 @@ void FileSelectBox::resizeEvent(QResizeEvent *event)
                                buttonFixWidth,
                                event->size().height());
 
-    //    if(m_iItemWidth == 0)
-    //    {
-    //        m_pTableView->resize(event->size().width(),m_iItemHeight);
-    //    }
-    //    else m_pTableView->resize(m_iItemWidth,m_iItemHeight);
-
     if(m_pTableView->model()!=nullptr && m_pTableView->model()->rowCount()>0)
     {
         m_pTableView->resize(this->size().width(),m_pTableView->model()->rowCount()*m_iItemHeight);
@@ -118,24 +130,25 @@ void FileSelectBox::resizeEvent(QResizeEvent *event)
 
 void FileSelectBox::keyPressEvent(QKeyEvent *event)
 {
-    switch (event->key())
+    if(m_pTableView->model())
     {
-    case Qt::Key::Key_Down:
-        if(m_pTableView->currentIndex().row()< m_pTableView->model()->rowCount())
+        switch (event->key())
         {
-            m_pTableView->selectRow(m_pTableView->currentIndex().row()+1);
+        case Qt::Key::Key_Down:
+
+            if(m_pTableView->currentIndex().row() < m_pTableView->model()->rowCount()-1)
+            {
+                m_pTableView->setCurrentIndex(m_pTableView->model()->index(m_pTableView->currentIndex().row()+1,0));
+            }
+            break;
+        case Qt::Key::Key_Up:
+            if(m_pTableView->currentIndex().row() > 0)
+            {
+                m_pLineEdit->setFocus();
+                m_pTableView->setCurrentIndex(m_pTableView->model()->index(m_pTableView->currentIndex().row()-1,0));
+            }
+            break;
         }
-        break;
-    case Qt::Key::Key_Up:
-        if(m_pTableView->currentIndex().row() > -1)
-        {
-            m_pTableView->selectRow(m_pTableView->currentIndex().row()-1);
-        }
-        if(m_pTableView->currentIndex().row() == -1)
-        {
-            m_pLineEdit->setFocus();
-        }
-        break;
     }
 }
 
@@ -234,8 +247,10 @@ void FileSelectBox::selectFile(QString path)
         QStringList filePathList;
         for (auto var: fileNameList)
         {
-            qDebug()<<"var"<<var;
-            filePathList << QString(path).append(var);
+            if(var != "." && var != "..")
+            {
+                filePathList << QString(path).append(var);
+            }
         }
         showPopList(filePathList);
     }
@@ -259,7 +274,7 @@ void FileSelectBox::hidePopList()
 
 void FileSelectBox::enterKeyAddText()
 {
-    if(m_pItemModel && m_pTableView->currentIndex().row() > -1)
+    if(m_pTableView->model() && m_pItemModel && m_pTableView->currentIndex().row() > -1)
     {
         m_pLineEdit->setText(m_pTableView->currentIndex().data().toString());
     }

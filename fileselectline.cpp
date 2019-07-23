@@ -1,11 +1,13 @@
 ﻿#include "fileselectline.h"
 #include <QKeyEvent>
+#include <QDebug>
 
 FileSelectLine::FileSelectLine(QWidget *parent)
 {
     if(parent)
     {
         this->setParent(parent);
+        this->installEventFilter(this);
     }
     resize(this->minimumSize());
     this->setFocusPolicy(Qt::StrongFocus);
@@ -13,14 +15,15 @@ FileSelectLine::FileSelectLine(QWidget *parent)
 
 FileSelectLine::~FileSelectLine(){}
 
-void FileSelectLine::focusInEvent(QFocusEvent *event)
+void FileSelectLine::keyPressEvent(QKeyEvent *event)
 {
-    QLineEdit::focusInEvent(event);
-    emit focusIn();
+    if (event->key() == Qt::Key::Key_Enter
+            || event->key() == Qt::Key::Key_Return)
+    {
+        qDebug()<<"enterKey";
+        emit enterKey();
+    }
+    QLineEdit::keyPressEvent(event);
 }
 
-void FileSelectLine::focusOutEvent(QFocusEvent *event)
-{
-    QLineEdit::focusOutEvent(event);
-    emit focusOut();
-}
+

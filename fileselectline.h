@@ -2,6 +2,7 @@
 #define FILESELECTLINE_H
 
 #include <QLineEdit>
+#include <QKeyEvent>
 
 class FileSelectLine:public QLineEdit
 {
@@ -11,13 +12,10 @@ public:
     ~FileSelectLine();
 
 signals:
-    void focusIn();
-    void focusOut();
+    void enterKey();
 
-private:
-    virtual void focusInEvent(QFocusEvent *event);
-    virtual void focusOutEvent(QFocusEvent *event);
-
+protected:
+    void keyPressEvent(QKeyEvent *event);
 };
 
 
