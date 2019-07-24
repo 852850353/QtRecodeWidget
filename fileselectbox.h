@@ -117,6 +117,7 @@ private:
 class FileSelectBox : public QWidget
 {
     Q_OBJECT
+public:
     enum FileSelectType
     {
         SELECT_ALL = 0,
@@ -124,12 +125,13 @@ class FileSelectBox : public QWidget
         SELECT_FILES = 2,
     };
 
-public:
     explicit FileSelectBox(QWidget *parent = nullptr);
+    FileSelectBox(FileSelectType type,QWidget *parent = nullptr);
     ~FileSelectBox();
     const QLineEdit* lineEdit();
     const QPushButton* pushButton();
     const QTableView* tableView();
+    const QDialog* fileDialog();
     void setLineEditText(QString Url);
     void setPushButtonText(QString DisplayTest);
 
@@ -138,7 +140,7 @@ private:
     selectPopList* m_pTableView = nullptr;
     QPushButton* m_pPushButton = nullptr;
     QStandardItemModel* m_pItemModel = nullptr;
-    FileSelectType SelectFileType = SELECT_ALL;
+    FileSelectType m_eSelectFileType = SELECT_ALL;
     QFileDialog* m_pFileDialog = nullptr;
     int m_iItemWidth,m_iItemHeight = 30;
     QPoint m_MovePos;
@@ -154,6 +156,8 @@ private:
 
     virtual void focusInEvent(QFocusEvent *event);
     virtual void focusOutEvent(QFocusEvent *event);
+    void initWidget();
+
 private slots:
     void showPopList(QStringList strList);
     void selectFile(QString path);

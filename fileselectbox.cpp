@@ -7,63 +7,19 @@
 #include <QDebug>
 #include <QApplication>
 
-class FilterObject :public QObject
-{
-public:
-    FilterObject(QObject* obj);
-    ~FilterObject();
-private:
-    bool eventFilter(QObject* obj,QEvent* event)
-    {
-
-    }
-};
-
 FileSelectBox::FileSelectBox(QWidget *parent)
 {
-    m_pLineEdit = new FileSelectLine(this);
-    m_pLineEdit->setText("test");
-    m_pPushButton = new QPushButton(this);
-    m_pTableView = new selectPopList();
-    m_pFileDialog = new QFileDialog();
-    if(parent) this->setParent(parent);
-
-    if(m_pLineEdit && m_pPushButton && m_pTableView)
-    {
-        m_pPushButton->setText("\n…");
-        m_pPushButton->setStyleSheet("background:rgba(255,255,255,255)");
-        m_pTableView->setWindowFlags(Qt::FramelessWindowHint|Qt::Tool);
-        m_pTableView->horizontalHeader()->hide();
-        m_pTableView->verticalHeader()->hide();
-        m_pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-        m_pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);//设置选中模式为选中行
-        m_pTableView->setSelectionMode( QAbstractItemView::SingleSelection);//设置选中单个
-
-        connect(m_pPushButton,&QPushButton::clicked,this,&FileSelectBox::showSelectFileDialog);
-
-        connect(m_pLineEdit,&QLineEdit::textChanged,this,&FileSelectBox::selectFile);
-
-        connect(m_pLineEdit,&FileSelectLine::enterKey,[=]
-        {
-            if(m_pTableView->model()&& m_pTableView->model() &&m_pTableView->currentIndex().row() > -1)
-            {
-                m_pLineEdit->setText(m_pTableView->currentIndex().data().toString());
-            }
-        });
-
-        connect(m_pFileDialog,&QFileDialog::fileSelected,[=](QString File){
-            m_pLineEdit->setText(File);
-        });
-
-        connect(m_pFileDialog,&QFileDialog::urlSelected,[=](QUrl Path){
-            m_pLineEdit->setText(Path.toString());
-        });
-        connect(m_pTableView,&selectPopList::enterKeySendCurrString,[=](QString filePath){
-            m_pLineEdit->setText(filePath);
-            m_pTableView->hide();
-        });
-    }
+    if(parent) setParent(parent);
+    initWidget();
 }
+
+FileSelectBox::FileSelectBox(FileSelectBox::FileSelectType type, QWidget *parent)
+{
+    if(type != FileSelectType::SELECT_ALL) m_eSelectFileType = type;
+    if(parent) setParent(parent);
+    initWidget();
+}
+
 
 FileSelectBox::~FileSelectBox()
 {
@@ -94,6 +50,11 @@ const QPushButton *FileSelectBox::pushButton()
 const QTableView *FileSelectBox::tableView()
 {
     return m_pTableView;
+}
+
+const QDialog *FileSelectBox::fileDialog()
+{
+    return m_pFileDialog;
 }
 
 void FileSelectBox::setLineEditText(QString Url)
@@ -221,6 +182,51 @@ void FileSelectBox::focusOutEvent(QFocusEvent *event)
     QWidget::focusOutEvent(event);
 }
 
+void FileSelectBox::initWidget()
+{
+    m_pLineEdit = new FileSelectLine(this);
+    m_pLineEdit->setText("test");
+    m_pPushButton = new QPushButton(this);
+    m_pTableView = new selectPopList();
+    m_pFileDialog = new QFileDialog();
+
+    if(m_pLineEdit && m_pPushButton && m_pTableView)
+    {
+        m_pPushButton->setText("\n…");
+        m_pPushButton->setStyleSheet("background:rgba(255,255,255,255)");
+        m_pTableView->setWindowFlags(Qt::FramelessWindowHint|Qt::Tool);
+        m_pTableView->horizontalHeader()->hide();
+        m_pTableView->verticalHeader()->hide();
+        m_pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        m_pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);//设置选中模式为选中行
+        m_pTableView->setSelectionMode( QAbstractItemView::SingleSelection);//设置选中单个
+
+        connect(m_pPushButton,&QPushButton::clicked,this,&FileSelectBox::showSelectFileDialog);
+
+        connect(m_pLineEdit,&QLineEdit::textChanged,this,&FileSelectBox::selectFile);
+
+        connect(m_pLineEdit,&FileSelectLine::enterKey,[=]
+        {
+            if(m_pTableView->model()&& m_pTableView->model() &&m_pTableView->currentIndex().row() > -1)
+            {
+                m_pLineEdit->setText(m_pTableView->currentIndex().data().toString());
+            }
+        });
+
+        connect(m_pFileDialog,&QFileDialog::fileSelected,[=](QString File){
+            m_pLineEdit->setText(File);
+        });
+
+        connect(m_pFileDialog,&QFileDialog::urlSelected,[=](QUrl Path){
+            m_pLineEdit->setText(Path.toString());
+        });
+        connect(m_pTableView,&selectPopList::enterKeySendCurrString,[=](QString filePath){
+            m_pLineEdit->setText(filePath);
+            m_pTableView->hide();
+        });
+    }
+}
+
 void FileSelectBox::showSelectFileDialog()
 {
     m_pTableView->close();
@@ -231,10 +237,19 @@ void FileSelectBox::showSelectFileDialog()
     {
         path.append(str);
     }
-
-    m_pFileDialog->setDirectory(path);
+    m_pFileDialog->history().clear();
+    m_pFileDialog->setDirectoryUrl(path);
+    if(path.isEmpty())
+    {
+        m_pFileDialog->setDirectory(QDir::currentPath());
+    }
+    else
+    {
+        m_pFileDialog->setDirectory(path);
+    }
     m_pFileDialog->setWindowModality(Qt::ApplicationModal);
-    switch (SelectFileType) {
+    m_pFileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
+    switch (m_eSelectFileType) {
     case SELECT_DIRS:
         m_pFileDialog->setWindowTitle("Open Directory Only onec");
         m_pFileDialog->setFileMode(QFileDialog::DirectoryOnly);
@@ -257,7 +272,7 @@ void FileSelectBox::selectFile(QString path)
     if(dir.exists() && path.size() > 0 && path.at(path.size()-1) == "\\")
     {
         QStringList fileNameList;
-        switch (SelectFileType) {
+        switch (m_eSelectFileType) {
         case SELECT_DIRS:
             fileNameList = dir.entryList(QDir::Dirs);
             break;
